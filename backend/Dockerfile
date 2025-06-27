@@ -1,21 +1,22 @@
-# Use Alpine-based Node.js image
-FROM node:18-alpine
+# Use the Node.js 24 Alpine image as the base image
+FROM --platform=linux/amd64 node:24-alpine
 
-# Set working directory
+# Set the working directory inside the container
 WORKDIR /app
 
-# Install g++ (and make, if needed)
-RUN apk update && apk add --no-cache g++ 
+# Install GCC and other necessary build tools
+RUN apk update && apk add --no-cache g++
 
-# Copy local files to container
-COPY . .
-
-
-# Install Node.js dependencies
+# Copy only the package.json and package-lock.json files and install dependencies.
+# This allows Docker to cache this layer when package files don't change.
+COPY package*.json ./
 RUN npm install
 
-# Expose backend port
+# Copy the rest of the application code.
+# This layer will only be rebuilt if application code changes.
+COPY . .
+
 EXPOSE 8000
 
-# Start the Node.js app
-CMD ["node", "index.js"]
+# Specify the command to run when the container starts
+CMD [ "node", "index.js" ]

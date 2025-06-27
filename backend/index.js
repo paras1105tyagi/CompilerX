@@ -6,7 +6,7 @@ const { executeCpp } = require('./executeCpp');
 const { generateInputFile } = require('./generateInputFile');
 const app = express();
 dotenv.config();
-
+const {aiCodeReview} = require('./aiCodeReview');
 
 
 app.use(cors());
@@ -34,6 +34,24 @@ app.post("/run", async (req, res) => {
     }
 });
 
+app.post("/ai-review", async (req, res) => {
+    const {code} = req.body;
+    if (code === undefined) {
+        return res.status(404).json({ success: false, error: "Empty code!" });
+    }
+
+
+    try{
+         const review = await aiCodeReview(code);
+         res.status(200).json({"review":review});
+    } catch(error){
+        res.status(500).json({
+            succss: false,
+            error: error.message || error.toString() ||'An error occured while executing the code'
+        })
+    }
+
+});   
 const PORT = process.env.PORT || 8000;
 
 app.listen(PORT, () => {

@@ -1,155 +1,125 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Editor from 'react-simple-code-editor';
+import ReactMarkdown from 'react-markdown';
 import { highlight, languages } from 'prismjs/components/prism-core';
 import 'prismjs/components/prism-clike';
+import 'prismjs/components/prism-javascript';
 import 'prismjs/themes/prism.css';
 import axios from 'axios';
 import './App.css';
 
 function App() {
-  // State to manage user's C++ code, input, output, and loading status
-  const [code, setCode] = useState(`#include <iostream>
-using namespace std;
-
-int main() {
-    int  num1 , num2 ;
-    cin >> num1 >> num2 ;
-
-    cout << num1 + num2 << endl;
-    return 0;
-}`);
+  const [code, setCode] = useState(`#include <iostream>\nusing namespace std;\n\nint main() {\n    int num1, num2, sum;\n    cin >> num1 >> num2;\n    sum = num1 + num2;\n    cout << "The sum of the two numbers is: " << sum;\n    return 0;\n}`);
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [aiReview, setAiReview] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
 
-  // Function to send code to backend for compilation and execution
-  const handleSubmit = async () => {
-    if (isLoading) return;
-
-    setIsLoading(true);
-    setOutput('');
-
+  const handleRun = async () => {
     const payload = {
       language: 'cpp',
       code,
-      input,
+      input
     };
-
+    setLoading(true);
+    setOutput('');
     try {
-      const backendUrl = import.meta.env.VITE_BACKEND_URL;
-      const { data } = await axios.post(backendUrl, payload);
+      const { data } = await axios.post(import.meta.env.VITE_BACKEND_URL, payload);
       setOutput(data.output);
     } catch (error) {
-      // Handle different types of errors and show user-friendly messages
-      if (error.response) {
-        setOutput(`Error: ${error.response.data.error || 'Server error occurred'}`);
-      } else if (error.request) {
-        setOutput('Error: Could not connect to server.');
-      } else {
-        setOutput(`Error: ${error.message}`);
-      }
-    } finally {
-      setIsLoading(false);
+      setOutput('Error executing code, error: ' + error.message);
     }
+    setLoading(false);
+  };
+
+  const handleAiReview = async () => {
+    const payload = {
+      code
+    };
+    setAiLoading(true);
+    setAiReview('');
+    try {
+      const { data } = await axios.post(import.meta.env.VITE_GOOGLE_GEMINI_API_URL, payload);
+      setAiReview(data.review);
+    } catch (error) {
+      setAiReview('Error in AI review, error: ' + error.message);
+    }
+    setAiLoading(false);
   };
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 text-gray-900 py-10 px-4 lg:px-24 font-sans overflow-hidden">
-      {/* Animated background blobs */}
-      <div className="pointer-events-none select-none absolute inset-0 -z-10">
-        {/* Blob 1 */}
-        <div className="absolute top-[-80px] left-[-80px] w-96 h-96 bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-400 opacity-30 rounded-full blur-3xl animate-blob1" />
-        {/* Blob 2 */}
-        <div className="absolute bottom-[-100px] right-[-100px] w-[28rem] h-[28rem] bg-gradient-to-tr from-pink-300 via-indigo-300 to-purple-300 opacity-20 rounded-full blur-3xl animate-blob2" />
-        {/* Blob 3 */}
-        <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-gradient-to-tl from-purple-200 via-pink-200 to-indigo-200 opacity-20 rounded-full blur-2xl animate-blob3" style={{transform: 'translate(-50%, -50%)'}} />
-      </div>
-
-      {/* Header with logo and title */}
-      <header className="flex items-center justify-center mb-10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-md">X</div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-indigo-700 drop-shadow-md">Compiler X</h1>
-        </div>
-      </header>
-
-      <div className="flex flex-col lg:flex-row gap-10 lg:gap-16">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 animate-fadeIn" style={{ background: 'none' }}>
+      <h1 className="text-4xl font-extrabold text-gray-800 mb-10 text-center" style={{ letterSpacing: '0.02em' }}>Compiler X</h1>
+      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-12">
         {/* Code Editor Section */}
-        <div className="lg:w-1/2 space-y-6">
-          <div
-            className="rounded-2xl shadow-lg border border-indigo-200 overflow-hidden bg-white transition-transform hover:scale-[1.01]"
-            style={{ height: '420px', overflowY: 'auto' }}
-          >
-            {/* Code editor with C++ syntax highlighting */}
+        <div className="clean-card flex flex-col mb-6 lg:mb-0">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Code Editor</h2>
+          <div className="overflow-y-auto flex-grow mb-4" style={{ height: '350px' }}>
             <Editor
               value={code}
-              onValueChange={setCode}
-              highlight={code => highlight(code, languages.cpp || languages.clike)}
-              padding={16}
+              onValueChange={code => setCode(code)}
+              highlight={code => highlight(code, languages.js)}
+              padding={15}
               style={{
-                fontFamily: 'Fira Mono, monospace',
+                fontFamily: 'Fira code, Fira Mono, monospace',
                 fontSize: 15,
-                height: '100%',
-                overflowY: 'auto',
-                outline: 'none',
-                background: 'linear-gradient(90deg, #f3e8ff 0%, #e0e7ff 100%)',
+                minHeight: '350px',
+                background: 'transparent',
               }}
             />
           </div>
-
-          {/* Run button with loading state */}
-          <button
-            onClick={handleSubmit}
-            disabled={isLoading}
-            className={`w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-white font-bold text-lg shadow-md transition-all duration-200 ${isLoading
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:to-pink-600'
-              }`}
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M15.91 11.672a.375.375 0 0 1 0 .656l-5.6 3.11a.375.375 0 0 1-.56-.327V8.887c0-.285.308-.465.56-.326l5.6 3.11z"
-              />
-            </svg>
-            {isLoading ? 'Running...' : 'Run Code'}
-          </button>
+          <span className="text-xs text-gray-500 mb-2">Write or paste your C++ code here.</span>
         </div>
-
-        {/* Input and Output Section */}
-        <div className="lg:w-1/2 space-y-8">
-          {/* Input Box for program input */}
-          <div>
-            <label className="block text-base font-semibold text-indigo-700 mb-2">
-              Program Input
-            </label>
+        {/* Input, Output, AI Review */}
+        <div className="flex flex-col gap-6">
+          {/* Input Box */}
+          <div className="clean-card p-4">
+            <h2 className="text-base font-semibold text-gray-700 mb-2">Input <span className="tooltip ml-1" title="Provide input values for your code.">🛈</span></h2>
             <textarea
+              rows="3"
               value={input}
-              onChange={e => setInput(e.target.value)}
-              rows={5}
-              className="w-full p-4 border-2 border-indigo-200 rounded-xl text-base resize-none bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition"
-              placeholder="Input yha likho"
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Enter input values..."
+              className="w-full p-3 text-sm border border-gray-200 rounded-md resize-none bg-gray-50 text-gray-800"
             />
           </div>
-
-          {/* Output Display */}
-          <div>
-            <label className="block text-base font-semibold text-indigo-700 mb-2">
-              Output
-            </label>
-            <div className="p-4 h-32 bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 border-2 border-indigo-100 rounded-xl overflow-y-auto font-mono text-base shadow-inner">
-              {output ? output : 'Bhai input to dede pehle...'}
+          {/* Output Box */}
+          <div className="clean-card p-4 overflow-y-auto" style={{ height: '100px' }}>
+            <h2 className="text-base font-semibold text-gray-700 mb-2">Output <span className="tooltip ml-1" title="See the output of your code here.">🛈</span></h2>
+            <div className="text-sm font-mono whitespace-pre-wrap text-gray-800">
+              {loading ? <span className="loader"></span> : output}
             </div>
+          </div>
+          {/* AI Review Box */}
+          <div className="clean-card p-4" style={{ height: '100px' }}>
+            <h2 className="text-base font-semibold text-gray-700 mb-2">AI Review <span className="tooltip ml-1" title="Get instant AI feedback on your code.">🤖</span></h2>
+            <div className="prose prose-sm text-gray-700 overflow-y-auto" style={{ height: '50px' }}>
+              {aiLoading ? <span className="loader"></span> : (
+                aiReview === '' ? <div>🤖</div> : <ReactMarkdown>{aiReview}</ReactMarkdown>
+              )}
+            </div>
+          </div>
+          {/* Buttons */}
+          <div className="flex gap-4 mt-2">
+            <button
+              onClick={handleRun}
+              className="flex-1 clean-btn"
+              disabled={loading}
+            >
+              {loading ? 'Running...' : 'Run'}
+            </button>
+            <button
+              onClick={handleAiReview}
+              className="flex-1 clean-btn"
+              disabled={aiLoading}
+            >
+              {aiLoading ? 'Reviewing...' : 'AI Review'}
+            </button>
           </div>
         </div>
       </div>
+      <footer className="mt-10 text-gray-400 text-sm">&copy; {new Date().getFullYear()} Compiler X. All rights reserved.</footer>
     </div>
   );
 }
